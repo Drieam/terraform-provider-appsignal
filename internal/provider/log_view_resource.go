@@ -6,8 +6,6 @@ import (
 	"strings"
 
 	appsignal "github.com/Drieam/appsignal-client-go"
-	"github.com/hashicorp/terraform-plugin-framework-validators/setvalidator"
-	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -16,7 +14,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/setdefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
-	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
@@ -37,19 +34,6 @@ type logViewResource struct {
 
 const logViewDefaultLineHeight = "0"
 
-var logViewSeverities = []string{
-	string(appsignal.SeverityTrace),
-	string(appsignal.SeverityDebug),
-	string(appsignal.SeverityInfo),
-	string(appsignal.SeverityNotice),
-	string(appsignal.SeverityWarn),
-	string(appsignal.SeverityError),
-	string(appsignal.SeverityCritical),
-	string(appsignal.SeverityAlert),
-	string(appsignal.SeverityFatal),
-	string(appsignal.SeverityUnknown),
-}
-
 type logViewResourceModel struct {
 	ID         types.String `tfsdk:"id"`
 	AppID      types.String `tfsdk:"app_id"`
@@ -57,7 +41,6 @@ type logViewResourceModel struct {
 	Query      types.String `tfsdk:"query"`
 	Columns    types.Set    `tfsdk:"columns"`
 	LineHeight types.String `tfsdk:"line_height"`
-	Severities types.Set    `tfsdk:"severities"`
 	SourceIDs  types.Set    `tfsdk:"source_ids"`
 }
 
@@ -137,17 +120,6 @@ func (r *logViewResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 				Computed: true,
 				Default:  stringdefault.StaticString(logViewDefaultLineHeight),
 			},
-			"severities": schema.SetAttribute{
-				MarkdownDescription: "The severities the log view matches. Each one of: `" +
-					strings.Join(logViewSeverities, "`, `") + "`.",
-				Optional:    true,
-				Computed:    true,
-				ElementType: types.StringType,
-				Default:     setdefault.StaticValue(types.SetValueMust(types.StringType, []attr.Value{})),
-				Validators: []validator.Set{
-					setvalidator.ValueStringsAre(stringvalidator.OneOf(logViewSeverities...)),
-				},
-			},
 			"source_ids": schema.SetAttribute{
 				Description: "The IDs of the log sources which this view aggregates.",
 				Optional:    true,
@@ -168,9 +140,7 @@ func (r *logViewResource) Create(ctx context.Context, req resource.CreateRequest
 		return
 	}
 
-	var severities []appsignal.LogSeverity
 	var sourceIDs, columns []string
-	resp.Diagnostics.Append(plan.Severities.ElementsAs(ctx, &severities, true)...)
 	resp.Diagnostics.Append(plan.SourceIDs.ElementsAs(ctx, &sourceIDs, true)...)
 	resp.Diagnostics.Append(plan.Columns.ElementsAs(ctx, &columns, true)...)
 	if resp.Diagnostics.HasError() {
@@ -182,7 +152,6 @@ func (r *logViewResource) Create(ctx context.Context, req resource.CreateRequest
 	input.Name = plan.Name.ValueString()
 	input.Query = plan.Query.ValueStringPointer()
 	input.LineHeight = plan.LineHeight.ValueStringPointer()
-	input.Severities = severities
 	input.SourceIDs = sourceIDs
 	input.Columns = columns
 
@@ -232,8 +201,6 @@ func (r *logViewResource) Read(ctx context.Context, req resource.ReadRequest, re
 	resp.Diagnostics.Append(columnsDiags...)
 	sourceIDs, sourceIDsDiags := types.SetValueFrom(ctx, types.StringType, logView.SourceIDs)
 	resp.Diagnostics.Append(sourceIDsDiags...)
-	severities, severitiesDiags := types.SetValueFrom(ctx, types.StringType, logView.Severities)
-	resp.Diagnostics.Append(severitiesDiags...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -243,7 +210,6 @@ func (r *logViewResource) Read(ctx context.Context, req resource.ReadRequest, re
 	state.LineHeight = types.StringValue(logView.LineHeight)
 	state.Columns = columns
 	state.SourceIDs = sourceIDs
-	state.Severities = severities
 
 	diags = resp.State.Set(ctx, &state)
 	resp.Diagnostics.Append(diags...)
@@ -261,9 +227,7 @@ func (r *logViewResource) Update(ctx context.Context, req resource.UpdateRequest
 		return
 	}
 
-	var severities []appsignal.LogSeverity
 	var sourceIDs, columns []string
-	resp.Diagnostics.Append(plan.Severities.ElementsAs(ctx, &severities, true)...)
 	resp.Diagnostics.Append(plan.SourceIDs.ElementsAs(ctx, &sourceIDs, true)...)
 	resp.Diagnostics.Append(plan.Columns.ElementsAs(ctx, &columns, true)...)
 	if resp.Diagnostics.HasError() {
@@ -276,7 +240,6 @@ func (r *logViewResource) Update(ctx context.Context, req resource.UpdateRequest
 	input.Name = plan.Name.ValueStringPointer()
 	input.Query = plan.Query.ValueStringPointer()
 	input.LineHeight = plan.LineHeight.ValueStringPointer()
-	input.Severities = severities
 	input.SourceIDs = sourceIDs
 	input.Columns = columns
 

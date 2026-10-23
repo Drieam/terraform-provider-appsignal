@@ -48,7 +48,6 @@ resource "appsignal_log_view" "example" {
 - `columns` (Set of String) The columns to include in the log view.
 - `line_height` (String) The line height of the log view. Defaults to `0`, the value AppSignal itself assigns.
 - `query` (String) The query string that is used for the log view. Defaults to an empty string.
-- `severities` (Set of String) The severities the log view matches. Each one of: `TRACE`, `DEBUG`, `INFO`, `NOTICE`, `WARN`, `ERROR`, `CRITICAL`, `ALERT`, `FATAL`, `UNKNOWN`.
 - `source_ids` (Set of String) The IDs of the log sources which this view aggregates.
 
 ### Read-Only

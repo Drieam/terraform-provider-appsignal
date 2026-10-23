@@ -33,8 +33,6 @@ resource "appsignal_log_trigger" "example" {
 
   name  = "my-trigger"
   query = "hostname=web"
-
-  severities = ["FATAL"]
 }
 ```
 
@@ -53,7 +51,6 @@ resource "appsignal_log_trigger" "example" {
 - `notification_options` (String) Notification option. One of: `ALWAYS`, `NEVER`, `FIRST_IN_DEPLOY`, `FIRST_AFTER_CLOSE`, `NTH_IN_HOUR`, `NTH_IN_DAY`.
 - `notification_trigger_value` (Number) Notification threshold.
 - `notifier_ids` (Set of String) The IDs of the notifiers this trigger notifies.
-- `severities` (Set of String) The severities the log trigger matches. Each one of: `TRACE`, `DEBUG`, `INFO`, `NOTICE`, `WARN`, `ERROR`, `CRITICAL`, `ALERT`, `FATAL`, `UNKNOWN`.
 - `source_ids` (Set of String) The IDs of the log sources for which this trigger is active.
 
 ### Read-Only
