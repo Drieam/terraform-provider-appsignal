@@ -18,6 +18,4 @@ resource "appsignal_log_trigger" "example" {
 
   name  = "my-trigger"
   query = "hostname=web"
-
-  severities = ["FATAL"]
 }

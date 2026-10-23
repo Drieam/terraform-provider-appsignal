@@ -2,7 +2,6 @@ package provider
 
 import (
 	"fmt"
-	"regexp"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
@@ -14,7 +13,7 @@ import (
 // cleans them all up again. description is a complete HCL attribute line so a
 // test step can leave it out entirely, which is how a cleared description is
 // expressed.
-func testAccLogTriggerConfig(name, query, severities, description string) string {
+func testAccLogTriggerConfig(name, query, description string) string {
 	return providerConfig + fmt.Sprintf(`
 resource "appsignal_app" "test" {
   name        = "my-test-log-trigger-app"
@@ -33,10 +32,9 @@ resource "appsignal_log_trigger" "test" {
   source_ids = [appsignal_log_source.test.id]
   name       = %[1]q
   query      = %[2]q
-  severities = %[3]s
-  %[4]s
+  %[3]s
 }
-`, name, query, severities, description)
+`, name, query, description)
 }
 
 func TestAccLogTriggerResource(t *testing.T) {
@@ -45,31 +43,17 @@ func TestAccLogTriggerResource(t *testing.T) {
 	resource.Test(t, resource.TestCase{
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
-			// A severity outside the enum is rejected before anything is
-			// created, rather than by the API.
-			{
-				Config: testAccLogTriggerConfig(
-					"my-test-log-trigger",
-					"hostname=web",
-					`["fatal"]`,
-					``,
-				),
-				ExpectError: regexp.MustCompile(`Attribute severities\[Value\("fatal"\)\] value must be one of`),
-			},
 			// Create and Read testing
 			{
 				Config: testAccLogTriggerConfig(
 					"my-test-log-trigger",
 					"hostname=web",
-					`["FATAL"]`,
 					`description = "created by the acceptance tests"`,
 				),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("appsignal_log_trigger.test", "name", "my-test-log-trigger"),
 					resource.TestCheckResourceAttr("appsignal_log_trigger.test", "query", "hostname=web"),
 					resource.TestCheckResourceAttr("appsignal_log_trigger.test", "description", "created by the acceptance tests"),
-					resource.TestCheckResourceAttr("appsignal_log_trigger.test", "severities.#", "1"),
-					resource.TestCheckTypeSetElemAttr("appsignal_log_trigger.test", "severities.*", "FATAL"),
 					resource.TestCheckResourceAttr("appsignal_log_trigger.test", "source_ids.#", "1"),
 					// The defaults the schema fills in when the configuration
 					// stays quiet about them.
@@ -94,16 +78,12 @@ func TestAccLogTriggerResource(t *testing.T) {
 				Config: testAccLogTriggerConfig(
 					"my-test-log-trigger-updated",
 					"hostname=worker",
-					`["FATAL", "WARN"]`,
 					`description = "updated by the acceptance tests"`,
 				),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("appsignal_log_trigger.test", "name", "my-test-log-trigger-updated"),
 					resource.TestCheckResourceAttr("appsignal_log_trigger.test", "query", "hostname=worker"),
 					resource.TestCheckResourceAttr("appsignal_log_trigger.test", "description", "updated by the acceptance tests"),
-					resource.TestCheckResourceAttr("appsignal_log_trigger.test", "severities.#", "2"),
-					resource.TestCheckTypeSetElemAttr("appsignal_log_trigger.test", "severities.*", "FATAL"),
-					resource.TestCheckTypeSetElemAttr("appsignal_log_trigger.test", "severities.*", "WARN"),
 					resource.TestCheckResourceAttr("appsignal_log_trigger.test", "source_ids.#", "1"),
 				),
 			},
@@ -113,7 +93,6 @@ func TestAccLogTriggerResource(t *testing.T) {
 				Config: testAccLogTriggerConfig(
 					"my-test-log-trigger-updated",
 					"hostname=worker",
-					`["FATAL", "WARN"]`,
 					``,
 				),
 				Check: resource.ComposeAggregateTestCheckFunc(

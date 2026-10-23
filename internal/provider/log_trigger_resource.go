@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	appsignal "github.com/Drieam/appsignal-client-go"
-	"github.com/hashicorp/terraform-plugin-framework-validators/setvalidator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/path"
@@ -45,19 +44,6 @@ var logTriggerActionTypes = []string{
 	string(appsignal.ActionTypeMetrics),
 }
 
-var logTriggerSeverities = []string{
-	string(appsignal.SeverityTrace),
-	string(appsignal.SeverityDebug),
-	string(appsignal.SeverityInfo),
-	string(appsignal.SeverityNotice),
-	string(appsignal.SeverityWarn),
-	string(appsignal.SeverityError),
-	string(appsignal.SeverityCritical),
-	string(appsignal.SeverityAlert),
-	string(appsignal.SeverityFatal),
-	string(appsignal.SeverityUnknown),
-}
-
 var logTriggerNotificationOptions = []string{
 	string(appsignal.NotificationOptionAlways),
 	string(appsignal.NotificationOptionNever),
@@ -78,7 +64,6 @@ type logTriggerResourceModel struct {
 	NotificationOptions      types.String `tfsdk:"notification_options"`
 	NotificationTriggerValue types.Int32  `tfsdk:"notification_trigger_value"`
 	Order                    types.Int32  `tfsdk:"order"`
-	Severities               types.Set    `tfsdk:"severities"`
 	NotifierIDs              types.Set    `tfsdk:"notifier_ids"`
 }
 
@@ -176,17 +161,6 @@ func (r *logTriggerResource) Schema(_ context.Context, _ resource.SchemaRequest,
 				Computed:    true,
 				Default:     int32default.StaticInt32(1),
 			},
-			"severities": schema.SetAttribute{
-				MarkdownDescription: "The severities the log trigger matches. Each one of: `" +
-					strings.Join(logTriggerSeverities, "`, `") + "`.",
-				Optional:    true,
-				Computed:    true,
-				ElementType: types.StringType,
-				Default:     setdefault.StaticValue(types.SetValueMust(types.StringType, []attr.Value{})),
-				Validators: []validator.Set{
-					setvalidator.ValueStringsAre(stringvalidator.OneOf(logTriggerSeverities...)),
-				},
-			},
 			"source_ids": schema.SetAttribute{
 				Description: "The IDs of the log sources for which this trigger is active.",
 				Optional:    true,
@@ -221,9 +195,7 @@ func (r *logTriggerResource) Create(ctx context.Context, req resource.CreateRequ
 		return
 	}
 
-	var severities []appsignal.LogSeverity
 	var sourceIDs, notifierIDs []string
-	resp.Diagnostics.Append(plan.Severities.ElementsAs(ctx, &severities, true)...)
 	resp.Diagnostics.Append(plan.SourceIDs.ElementsAs(ctx, &sourceIDs, true)...)
 	resp.Diagnostics.Append(plan.NotifierIDs.ElementsAs(ctx, &notifierIDs, true)...)
 	if resp.Diagnostics.HasError() {
@@ -237,7 +209,6 @@ func (r *logTriggerResource) Create(ctx context.Context, req resource.CreateRequ
 	input.Description = plan.Description.ValueStringPointer()
 	input.NotificationOptions = logTriggerNotificationOptionPointer(plan.NotificationOptions)
 	input.NotificationTriggerValue = plan.NotificationTriggerValue.ValueInt32Pointer()
-	input.Severities = severities
 	input.SourceIDs = sourceIDs
 	input.NotifierIDs = notifierIDs
 
@@ -290,8 +261,6 @@ func (r *logTriggerResource) Read(ctx context.Context, req resource.ReadRequest,
 		return
 	}
 
-	severities, severitiesDiags := types.SetValueFrom(ctx, types.StringType, logTrigger.Severities)
-	resp.Diagnostics.Append(severitiesDiags...)
 	sourceIDs, sourceIDsDiags := types.SetValueFrom(ctx, types.StringType, logTrigger.SourceIDs)
 	resp.Diagnostics.Append(sourceIDsDiags...)
 
@@ -316,7 +285,6 @@ func (r *logTriggerResource) Read(ctx context.Context, req resource.ReadRequest,
 	}
 	state.NotificationOptions = types.StringValue(string(logTrigger.NotificationOptions))
 	state.NotificationTriggerValue = types.Int32Value(logTrigger.NotificationTriggerValue)
-	state.Severities = severities
 	state.SourceIDs = sourceIDs
 	state.NotifierIDs = notifierIDs
 
@@ -336,9 +304,7 @@ func (r *logTriggerResource) Update(ctx context.Context, req resource.UpdateRequ
 		return
 	}
 
-	var severities []appsignal.LogSeverity
 	var sourceIDs, notifierIDs []string
-	resp.Diagnostics.Append(plan.Severities.ElementsAs(ctx, &severities, true)...)
 	resp.Diagnostics.Append(plan.SourceIDs.ElementsAs(ctx, &sourceIDs, true)...)
 	resp.Diagnostics.Append(plan.NotifierIDs.ElementsAs(ctx, &notifierIDs, true)...)
 	if resp.Diagnostics.HasError() {
@@ -360,7 +326,6 @@ func (r *logTriggerResource) Update(ctx context.Context, req resource.UpdateRequ
 	input.Description = description
 	input.NotificationOptions = logTriggerNotificationOptionPointer(plan.NotificationOptions)
 	input.NotificationTriggerValue = plan.NotificationTriggerValue.ValueInt32Pointer()
-	input.Severities = severities
 	input.SourceIDs = sourceIDs
 	input.NotifierIDs = notifierIDs
 
